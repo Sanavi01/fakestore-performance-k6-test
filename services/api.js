@@ -1,19 +1,34 @@
 import http from 'k6/http';
 
-export function getProducts(baseUrl) {
-  return http.get(`${baseUrl}/productsList`);
+import { BASE_URL, LOGIN_PATH } from '../config/config.js';
+
+export function parseCsv(text) {
+  const rows = text.replace(/^\uFEFF/, '').trim().split(/\r?\n/);
+
+  if (!rows.length || !rows[0]) {
+    return [];
+  }
+
+  return rows
+    .slice(1)
+    .map((row) => row.trim())
+    .filter(Boolean)
+    .map((row) => {
+      const [username, password] = row.split(',').map((value) => value.trim());
+
+      return { username, password };
+    })
+    .filter((credential) => credential.username && credential.password);
 }
 
-export function createPost() {
-  const randomId = Math.floor(Math.random() * 10) + 1;
+export function loadCredentials(filePath) {
+  return parseCsv(open(filePath));
+}
 
+export function login(username, password, baseUrl = BASE_URL) {
   return http.post(
-    'https://jsonplaceholder.typicode.com/posts',
-    JSON.stringify({
-      title: `Hola mundo ${randomId}`,
-      body: 'Prueba k6',
-      userId: randomId,
-    }),
+    `${baseUrl}${LOGIN_PATH}`,
+    JSON.stringify({ username, password }),
     {
       headers: { 'Content-Type': 'application/json' },
     }
